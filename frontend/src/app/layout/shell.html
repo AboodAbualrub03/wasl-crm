@@ -1,0 +1,86 @@
+@let user = auth.user()!;
+
+<header class="top">
+  <div class="top-inner">
+    <a routerLink="/" class="brand" aria-label="وصل">
+      <img src="logo.svg" alt="" width="30" height="30" />
+      <span>وصل</span>
+    </a>
+
+    <button type="button" class="menu-btn" (click)="menuOpen.set(!menuOpen())" [attr.aria-expanded]="menuOpen()">القائمة</button>
+
+    <nav class="nav" [class.open]="menuOpen()">
+      <a routerLink="/" routerLinkActive="on" [routerLinkActiveOptions]="{ exact: true }">اليوم</a>
+      <a routerLink="/pipeline" routerLinkActive="on">الصفقات</a>
+      <a routerLink="/leads" routerLinkActive="on">العملاء المحتملون</a>
+      <a routerLink="/companies" routerLinkActive="on">الشركات</a>
+      <a routerLink="/contacts" routerLinkActive="on">جهات الاتصال</a>
+      <a routerLink="/tasks" routerLinkActive="on">المهام</a>
+      <a routerLink="/reports" routerLinkActive="on">التقارير</a>
+      @if (auth.isAdmin()) {
+        <a routerLink="/settings" routerLinkActive="on">الإعدادات</a>
+      }
+    </nav>
+
+    <div class="tools">
+      <button type="button" class="search-btn" (click)="paletteOpen.set(true)">
+        <span>ابحث في كل شيء</span>
+        <kbd>Ctrl K</kbd>
+      </button>
+
+      <div class="pop-wrap">
+        <button type="button" class="icon-btn" (click)="bellOpen.set(!bellOpen()); meOpen.set(false)" aria-label="الإشعارات">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+          </svg>
+          @if (bell.unread()) { <span class="dot">{{ bell.unread() }}</span> }
+        </button>
+        @if (bellOpen()) {
+          <div class="away" (click)="bellOpen.set(false)"></div>
+          <div class="pop bell">
+            <div class="pop-head">
+              <strong>الإشعارات</strong>
+              @if (bell.unread()) { <button type="button" class="btn ghost sm" (click)="bell.readAll()">تعليم الكل كمقروء</button> }
+            </div>
+            <ul>
+              @for (n of bell.items(); track n.id) {
+                <li>
+                  <button type="button" [class.unread]="!n.isRead" (click)="open(n)">
+                    <span>{{ n.title }}</span>
+                    <small>{{ n.createdAt | when: 'ago' }}</small>
+                  </button>
+                </li>
+              } @empty {
+                <li class="none">لا إشعارات.</li>
+              }
+            </ul>
+          </div>
+        }
+      </div>
+
+      <div class="pop-wrap">
+        <button type="button" class="me" (click)="meOpen.set(!meOpen()); bellOpen.set(false)">
+          <span class="avatar">{{ user.fullName | initials }}</span>
+        </button>
+        @if (meOpen()) {
+          <div class="away" (click)="meOpen.set(false)"></div>
+          <div class="pop me-pop">
+            <div class="who">
+              <strong>{{ user.fullName }}</strong>
+              <span>{{ roleLabel[user.role] }} · {{ user.workspaceName }}</span>
+            </div>
+            <button type="button" class="btn ghost sm" (click)="auth.logout()">تسجيل الخروج</button>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <router-outlet />
+</main>
+
+@if (paletteOpen()) {
+  <app-command-palette (closed)="paletteOpen.set(false)" />
+}

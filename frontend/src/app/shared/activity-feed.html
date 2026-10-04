@@ -1,0 +1,82 @@
+@if (!readonly()) {
+  <div class="composer card">
+    <div class="tabs" role="tablist">
+      @for (k of kinds; track k) {
+        <button type="button" role="tab" [class.on]="kind() === k" (click)="pick(k)">
+          <app-activity-icon [type]="k" />
+          {{ label[k] }}
+        </button>
+      }
+    </div>
+
+    @if (kind() === 'Note') {
+      <textarea class="textarea plain" rows="3" [(ngModel)]="notes" [placeholder]="placeholder()"></textarea>
+    } @else {
+      <input class="input plain" [(ngModel)]="subject" [placeholder]="placeholder()" (keydown.enter)="save()" />
+      @if (kind() !== 'Task') {
+        <textarea class="textarea plain" rows="2" [(ngModel)]="notes" placeholder="تفاصيل (اختياري)"></textarea>
+      }
+    }
+
+    <div class="composer-foot">
+      @if (kind() === 'Task') {
+        <label class="due">
+          <span class="muted small">الموعد</span>
+          <input class="input" type="datetime-local" [(ngModel)]="due" />
+        </label>
+      }
+      <span class="grow"></span>
+      <button type="button" class="btn primary sm" [disabled]="busy() || (kind() === 'Note' ? !notes.trim() : !subject.trim())" (click)="save()">
+        {{ kind() === 'Task' ? 'إضافة المهمة' : 'تسجيل' }}
+      </button>
+    </div>
+  </div>
+}
+
+@if (open().length) {
+  <section class="block">
+    <h3 class="block-title">مهام مفتوحة</h3>
+    @for (a of open(); track a.id) {
+      <div class="task" [class.late]="a.isOverdue">
+        <button type="button" class="check" (click)="toggle(a)" [attr.aria-label]="'إنجاز ' + a.subject"></button>
+        <div class="grow">
+          <div class="subject">{{ a.subject }}</div>
+          <div class="meta">
+            <span [class.overdue]="a.isOverdue">{{ a.dueAt | when: 'when' }}</span>
+            · {{ a.owner.fullName }}
+            @if (showRelated() && a.related) { · <a [routerLink]="link(a)">{{ a.related.name }}</a> }
+          </div>
+        </div>
+      </div>
+    }
+  </section>
+}
+
+<section class="block">
+  <h3 class="block-title">السجل</h3>
+  <ol class="feed">
+    @for (a of done(); track a.id) {
+      <li [class.system]="a.type === 'System'">
+        <app-activity-icon [type]="a.type" />
+        <div class="grow">
+          @if (a.type === 'System') {
+            <div class="sys">{{ a.subject }} <span class="muted">· {{ a.createdAt | when: 'ago' }}</span></div>
+          } @else {
+            <div class="line">
+              <strong>{{ a.subject }}</strong>
+              @if (a.type === 'Task') { <span class="chip won">أُنجزت</span> }
+            </div>
+            @if (a.notes) { <p class="notes">{{ a.notes }}</p> }
+            <div class="meta">
+              {{ label[a.type] }} · {{ a.owner.fullName }} · {{ (a.completedAt ?? a.createdAt) | when: 'ago' }}
+              @if (showRelated() && a.related) { · <a [routerLink]="link(a)">{{ a.related.name }}</a> }
+              @if (a.type === 'Task' && !readonly()) { · <button type="button" class="undo" (click)="toggle(a)">تراجع</button> }
+            </div>
+          }
+        </div>
+      </li>
+    } @empty {
+      <li class="nothing">لا يوجد نشاط مسجل بعد.</li>
+    }
+  </ol>
+</section>

@@ -1,0 +1,103 @@
+<div class="wrap">
+  <div class="head">
+    <div>
+      <h1>الصفقات</h1>
+      @if (board(); as b) {
+        <p class="sub">
+          خط مفتوح بقيمة <strong class="num">{{ b.openTotal | money }}</strong>،
+          المتوقع منه <strong class="num">{{ b.weightedTotal | money }}</strong>
+          @if (b.staleCount) {
+            · <span class="cold">{{ b.staleCount }} صفقة تبرد (بلا نشاط منذ {{ b.staleAfterDays }} أيام)</span>
+          }
+        </p>
+      }
+    </div>
+    <div class="toolbar">
+      @if (auth.isManager()) {
+        <div class="pills">
+          <button type="button" [class.on]="scope() === 'team'" (click)="setScope('team')">الفريق</button>
+          <button type="button" [class.on]="scope() === 'mine'" (click)="setScope('mine')">صفقاتي</button>
+        </div>
+      }
+      <input class="input" type="search" placeholder="بحث في الصفقات" [(ngModel)]="search" (ngModelChange)="onSearch()" />
+      <button type="button" class="btn accent" (click)="newDeal.set(true)">صفقة جديدة</button>
+    </div>
+  </div>
+
+  @if (board(); as b) {
+    <div class="board" cdkDropListGroup>
+      @for (col of b.columns; track col.id) {
+        <section class="col {{ col.kind }}">
+          <header class="col-head">
+            <div class="row">
+              <h2>{{ col.name }}</h2>
+              <span class="count">{{ col.count }}</span>
+            </div>
+            <div class="col-sum">
+              <span class="num">{{ col.total | money: true }}</span>
+              @if (col.kind === 'Open') { <span class="prob">{{ col.probability }}%</span> }
+              @if (col.kind !== 'Open') { <span class="prob">آخر 30 يومًا</span> }
+            </div>
+          </header>
+
+          <div class="list" cdkDropList [cdkDropListData]="col.deals" (cdkDropListDropped)="drop($event, col)">
+            @for (d of col.deals; track d.id) {
+              <article class="deal" cdkDrag [cdkDragData]="d" [class.stale]="d.isStale"
+                (cdkDragStarted)="dragging = true" (cdkDragEnded)="endDrag()" (click)="open(d)">
+                <div class="deal-top">
+                  <h3>{{ d.title }}</h3>
+                  @if (d.isStale) { <span class="chip accent">تبرد</span> }
+                </div>
+                @if (d.companyName) { <p class="company">{{ d.companyName }}</p> }
+
+                @if (col.kind === 'Open') {
+                  @if (d.nextTask; as t) {
+                    <p class="next" [class.overdue]="t.isOverdue">
+                      <span class="tick"></span>{{ t.subject }} · {{ t.dueAt | when: 'when' }}
+                    </p>
+                  } @else {
+                    <p class="next none">لا خطوة قادمة</p>
+                  }
+                }
+
+                <footer class="deal-foot">
+                  <strong class="num value">{{ d.value | money }}</strong>
+                  <span class="grow"></span>
+                  <span class="days" title="المدة في هذه المرحلة">{{ d.daysInStage | days }}</span>
+                  <span class="avatar" [title]="d.owner.fullName">{{ d.owner.fullName | initials }}</span>
+                </footer>
+                <div class="placeholder" *cdkDragPlaceholder></div>
+              </article>
+            } @empty {
+              <p class="drop-hint">اسحب صفقة إلى هنا</p>
+            }
+          </div>
+        </section>
+      }
+    </div>
+  } @else {
+    <p class="loading">جارٍ التحميل…</p>
+  }
+</div>
+
+@if (pendingLoss(); as p) {
+  <app-dialog heading="لماذا خسرنا الصفقة؟" [hint]="p.deal.title" (closed)="pendingLoss.set(null)">
+    <div class="reasons">
+      @for (r of reasons; track r) {
+        <button type="button" class="reason" [class.on]="lossReason === r" (click)="lossReason = r">{{ r }}</button>
+      }
+    </div>
+    <label class="field">
+      <span>أو اكتب السبب</span>
+      <input class="input" [(ngModel)]="lossReason" />
+    </label>
+    <div actions>
+      <button type="button" class="btn primary" [disabled]="!lossReason.trim()" (click)="confirmLoss()">تسجيل الخسارة</button>
+      <button type="button" class="btn ghost" (click)="pendingLoss.set(null)">إلغاء</button>
+    </div>
+  </app-dialog>
+}
+
+@if (newDeal()) {
+  <app-deal-form (closed)="newDeal.set(false)" (saved)="created($event)" />
+}
